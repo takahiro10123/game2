@@ -57,6 +57,9 @@ function isOpenForPlayer(card, player){
   return !!card.openFor?.[player] || card.faceUp || card.openedByMatch;
 }
 
+function isPublicOpen(card){
+  return !!card.faceUp || !!card.openedByMatch;
+}
 
 function canBulk(card) {
   if (kind(card.value) === 'red') return false;
@@ -205,8 +208,18 @@ const actions = {
   closeOverlay() {
     S.overlay = null;
     if (S.lose || S.winner) return;
-    if (S.phase === 'play' && S.result) { S.result = null; nextTurn(); render(); return; }
-    if (S.phase === 'play' && S.pendingAbilityMiss && S.current === S.pendingAbilityChooser) { S.overlay = { type: 'abilityMissChoice' }; render(); return; }
+    if (S.phase === 'play' && S.result) {
+      S.result = null;
+      if (S.pendingAbilityMiss) {
+        nextTurn();
+        S.overlay = { type: 'abilityMissChoice' };
+        render();
+        return;
+      }
+      nextTurn();
+      render();
+      return;
+    }
     render();
   },
   setNormal() { S.action = 'normal'; S.selectedSelf = null; S.selectedOpp = []; render(); },
@@ -250,10 +263,10 @@ function view() {
     <div class="panel">相手ヒント: ${hintFromOpp ? `スタンド${hintFromOpp.stand}の『${hintFromOpp.value}』` : '(未設定)'}</div>
     <div class="panel row">現在: ${currentName} / ターン: ${S.turn} / ミス:${'<span class="dot on"></span>'.repeat(S.miss)}${'<span class="dot"></span>'.repeat(2 - S.miss)} / 能力:${S.abilityUsed[S.current] ? '使用済' : '残1回'} / アクション:${S.action}</div>
     <div class="panel small">操作ガイド: ${actionGuide}</div>
-    <div class="panel"><h3>"${S.playerNames[oppIdx[0] < 2 ? 0 : 1]}"さんのスタンド①</h3><div class="line">${S.stands[oppIdx[0]].map((c)=>renderCard(c,{opened:isOpenForPlayer(c,viewPlayer),hidden:S.phase==='hint'?true:!isOpenForPlayer(c,viewPlayer),hint:S.hints[1-viewPlayer]?.id===c.id,label:S.hints[1-viewPlayer]?.value,oppOpen:c.faceUp&&c.openedByMatch,selected:S.selectedOpp.some(x=>x.id===c.id)})).join('')}</div></div>
-    <div class="panel"><h3>"${S.playerNames[oppIdx[1] < 2 ? 0 : 1]}"さんのスタンド②</h3><div class="line">${S.stands[oppIdx[1]].map((c)=>renderCard(c,{opened:isOpenForPlayer(c,viewPlayer),hidden:S.phase==='hint'?true:!isOpenForPlayer(c,viewPlayer),hint:S.hints[1-viewPlayer]?.id===c.id,label:S.hints[1-viewPlayer]?.value,oppOpen:c.faceUp&&c.openedByMatch,selected:S.selectedOpp.some(x=>x.id===c.id)})).join('')}</div></div>
-    <div class="panel"><h3>"${S.playerNames[myIdx[0] < 2 ? 0 : 1]}"さんのスタンド①</h3><div class="line">${S.stands[myIdx[0]].map((c)=>renderCard(c,{opened:isOpenForPlayer(c,viewPlayer),hidden:false,told:c.told,selfOpen:isOpenForPlayer(c,viewPlayer),selectable:S.action==='bulk'&&canBulk(c),selected:S.selectedSelf?.id===c.id})).join('')}</div></div>
-    <div class="panel"><h3>"${S.playerNames[myIdx[1] < 2 ? 0 : 1]}"さんのスタンド②</h3><div class="line">${S.stands[myIdx[1]].map((c)=>renderCard(c,{opened:isOpenForPlayer(c,viewPlayer),hidden:false,told:c.told,selfOpen:isOpenForPlayer(c,viewPlayer),selectable:S.action==='bulk'&&canBulk(c),selected:S.selectedSelf?.id===c.id})).join('')}</div></div>
+    <div class="panel"><h3>"${S.playerNames[oppIdx[0] < 2 ? 0 : 1]}"さんのスタンド①</h3><div class="line">${S.stands[oppIdx[0]].map((c)=>renderCard(c,{opened:isPublicOpen(c),hidden:S.phase==='hint'?true:!isPublicOpen(c),hint:S.hints[1-viewPlayer]?.id===c.id,label:S.hints[1-viewPlayer]?.value,oppOpen:c.faceUp&&c.openedByMatch,selected:S.selectedOpp.some(x=>x.id===c.id)})).join('')}</div></div>
+    <div class="panel"><h3>"${S.playerNames[oppIdx[1] < 2 ? 0 : 1]}"さんのスタンド②</h3><div class="line">${S.stands[oppIdx[1]].map((c)=>renderCard(c,{opened:isPublicOpen(c),hidden:S.phase==='hint'?true:!isPublicOpen(c),hint:S.hints[1-viewPlayer]?.id===c.id,label:S.hints[1-viewPlayer]?.value,oppOpen:c.faceUp&&c.openedByMatch,selected:S.selectedOpp.some(x=>x.id===c.id)})).join('')}</div></div>
+    <div class="panel"><h3>"${S.playerNames[myIdx[0] < 2 ? 0 : 1]}"さんのスタンド①</h3><div class="line">${S.stands[myIdx[0]].map((c)=>renderCard(c,{opened:isPublicOpen(c),hidden:false,told:c.told,selfOpen:isPublicOpen(c),selectable:S.action==='bulk'&&canBulk(c),selected:S.selectedSelf?.id===c.id})).join('')}</div></div>
+    <div class="panel"><h3>"${S.playerNames[myIdx[1] < 2 ? 0 : 1]}"さんのスタンド②</h3><div class="line">${S.stands[myIdx[1]].map((c)=>renderCard(c,{opened:isPublicOpen(c),hidden:false,told:c.told,selfOpen:isPublicOpen(c),selectable:S.action==='bulk'&&canBulk(c),selected:S.selectedSelf?.id===c.id})).join('')}</div></div>
     <div class="panel row"><button class="action-btn ${S.action==='normal'?'active':''}" data-action="setNormal">通常宣言</button><button class="action-btn ${S.action==='bulk'?'active':''}" data-action="setBulk">一括オープン</button><button class="action-btn ${S.action==='ability'?'active':''}" data-action="setAbility" ${S.abilityUsed[S.current] ? 'disabled' : ''}>特殊能力</button><span class="small">選択: 自:${S.selectedSelf ? fmt(S.selectedSelf.value) : '-'} 相:${S.selectedOpp.map((c)=>fmt(c.value)).join('/') || '-'} / ${S.action==='bulk'?'自分スタンドの開きたいカードを1枚選択':''}</span></div>`;
 }
 
