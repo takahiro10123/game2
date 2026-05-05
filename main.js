@@ -1,7 +1,7 @@
 const app = document.getElementById('app');
 
 const S = {
-  phase: 'start', // start | setup | hint | ready | play
+  phase: 'start', // start | rules | setup | hint | ready | play
   yellowCount: 2,
   redCount: 1,
   playerNames: ['プレイヤー1', 'プレイヤー2'],
@@ -22,6 +22,8 @@ const S = {
   lose: false,
   pendingAbilityMiss: null,
   pendingAbilityChooser: null,
+  pendingAbilityHit: null,
+  pendingAbilityHitChooser: null,
 };
 
 const fmt = (v) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
@@ -144,9 +146,13 @@ function abilityJudge(selfCard, oppCards) {
       S.pendingAbilityChooser = 1 - S.current;
     }
     S.result = { ok: false, detail: `能力失敗 / ミス: ${S.miss}` };
-  } else {
+  } else if (hits.length === 1) {
     hits[0].faceUp = true; hits[0].openedByMatch = true; hits[0].openFor=[true,true];
     S.result = { ok: true, detail: `能力成功: ${fmt(hits[0].value)} をオープン` };
+  } else {
+    S.pendingAbilityHit = hits;
+    S.pendingAbilityHitChooser = 1 - S.current;
+    S.result = { ok: true, detail: '能力成功: 一致が2枚あります。公開する1枚を選択してください。' };
   }
   S.abilityUsed[S.current] = true;
   S.overlay = { type: 'result' };
@@ -219,6 +225,8 @@ function onCard(id) {
 
 const actions = {
   goSetup() { S.phase = 'setup'; render(); },
+  goRules() { S.phase = 'rules'; render(); },
+  backToStart() { S.phase = 'start'; render(); },
   start() {
     const n1 = document.querySelector('#p1')?.value?.trim();
     const n2 = document.querySelector('#p2')?.value?.trim();
@@ -234,6 +242,12 @@ const actions = {
     if (S.lose || S.winner) return;
     if (S.phase === 'play' && S.result) {
       S.result = null;
+      if (S.pendingAbilityHit) {
+        nextTurn();
+        S.overlay = { type: 'abilityHitChoice' };
+        render();
+        return;
+      }
       if (S.pendingAbilityMiss) {
         nextTurn();
         S.overlay = { type: 'abilityMissChoice' };
@@ -253,6 +267,8 @@ const actions = {
   setRed(v) { S.redCount = v; render(); },
   abilityMiss0(){ if(S.pendingAbilityMiss?.[0]) markMissHint(S.pendingAbilityMiss[0]); S.pendingAbilityMiss=null; S.pendingAbilityChooser=null; S.abilityUsed[S.current]=true; S.result={ok:false,detail:`能力失敗 / ミス: ${S.miss}`}; S.overlay={type:'result'}; checkWinLose(); render();},
   abilityMiss1(){ if(S.pendingAbilityMiss?.[1]) markMissHint(S.pendingAbilityMiss[1]); S.pendingAbilityMiss=null; S.pendingAbilityChooser=null; S.abilityUsed[S.current]=true; S.result={ok:false,detail:`能力失敗 / ミス: ${S.miss}`}; S.overlay={type:'result'}; checkWinLose(); render();},
+  abilityHit0(){ if(S.pendingAbilityHit?.[0]){ const c=S.pendingAbilityHit[0]; c.faceUp=true; c.openedByMatch=true; c.openFor=[true,true]; } S.pendingAbilityHit=null; S.pendingAbilityHitChooser=null; S.result={ok:true,detail:'能力成功: 1枚を公開しました。'}; S.overlay={type:'result'}; checkWinLose(); render();},
+  abilityHit1(){ if(S.pendingAbilityHit?.[1]){ const c=S.pendingAbilityHit[1]; c.faceUp=true; c.openedByMatch=true; c.openFor=[true,true]; } S.pendingAbilityHit=null; S.pendingAbilityHitChooser=null; S.result={ok:true,detail:'能力成功: 1枚を公開しました。'}; S.overlay={type:'result'}; checkWinLose(); render();},
 };
 
 function view() {
@@ -262,8 +278,22 @@ function view() {
         <div class="logo-main">2人協力パズル</div>
         <div class="logo-sub">PUZZLE STYLE</div>
       </div>
-      <button class="start-btn" data-action="goSetup">スタート</button>
+      <div class="row">
+        <button class="start-btn" data-action="goSetup">スタート</button>
+        <button class="secondary" data-action="goRules">ルール説明</button>
+      </div>
     </div>`;
+  }
+
+
+  if (S.phase === 'rules') {
+    return `<div class="panel"><h2>ルール説明</h2>
+      <h3>🎯 目的</h3><ul><li>非赤カードをすべて公開できれば勝利</li><li>ミス2回で敗北</li><li>赤カードへ通常宣言すると即敗北</li></ul>
+      <h3>🕹️ 基本の流れ</h3><ul><li>名前・特殊カード枚数を設定</li><li>ヒントフェーズで数字カード1枚を相手に伝える</li><li>ヒント確認後にゲーム開始</li></ul>
+      <h3>✅ ターンで選べる行動</h3><ul><li>通常宣言：自分1枚→相手1枚</li><li>一括オープン：条件達成時に同値カードをまとめて公開</li><li>特殊能力：自分1枚→相手2枚</li></ul>
+      <h3>🧩 一括オープン条件</h3><ul><li>同数字4枚（または黄色4枚）が自分側にある</li><li>同値2枚以上が公開済みで、残り未公開同値がすべて自分スタンド内</li><li>黄色2枚構成時は、2枚とも自分スタンド内なら可能</li></ul>
+      <h3>✨ 公開情報</h3><ul><li>一度オープンされたカードはゲーム終了まで公開</li><li>ターン交代後も裏向きに戻らない</li></ul>
+      <button data-action="backToStart">スタートに戻る</button></div>`;
   }
 
   if (S.phase === 'setup') {
@@ -311,6 +341,7 @@ function render() {
     o.className = 'overlay' + (S.overlay.type === 'swap' ? ' blackout' : '');
     if (S.overlay.type === 'swap') o.innerHTML = `<div class="modal"><div class="big">プレイヤー交代</div><p><b>"${S.playerNames[S.overlay.nextPlayer]}さん"のターンです。</b></p><p>${S.overlay.message}</p><button data-action="closeOverlay">OK</button></div>`;
     if (S.overlay.type === 'abilityMissChoice') o.innerHTML = `<div class="modal"><h3>能力失敗：公開ヒントを選択</h3><p>失敗された側のプレイヤーが、どちらのカード情報を公開するか選択してください。</p><div class="row"><button data-action="abilityMiss0">${S.pendingAbilityMiss?.[0]? (kind(S.pendingAbilityMiss[0].value)==='yellow'?'黄候補':'数字候補') : ''}</button><button data-action="abilityMiss1">${S.pendingAbilityMiss?.[1]? (kind(S.pendingAbilityMiss[1].value)==='yellow'?'黄候補':'数字候補') : ''}</button></div></div>`;
+    if (S.overlay.type === 'abilityHitChoice') o.innerHTML = `<div class="modal"><h3>能力成功：公開カードを選択</h3><p>一致した2枚のうち、公開する1枚を選んでください。</p><div class="row"><button data-action="abilityHit0">${S.pendingAbilityHit?.[0]? fmt(S.pendingAbilityHit[0].value) : ''}</button><button data-action="abilityHit1">${S.pendingAbilityHit?.[1]? fmt(S.pendingAbilityHit[1].value) : ''}</button></div></div>`;
     if (S.overlay.type === 'confirmHints') o.innerHTML = `<div class="modal"><h3>ヒント確認</h3><p>${S.playerNames[0]}→${S.playerNames[1]}: スタンド${S.hints[0].stand}の『${S.hints[0].value}』</p><p>${S.playerNames[1]}→${S.playerNames[0]}: スタンド${S.hints[1].stand}の『${S.hints[1].value}』</p><button data-action="toPlay">ゲーム開始！</button></div>`;
     if (S.overlay.type === 'result') o.innerHTML = `<div class="modal"><div class="big ${S.result.ok ? 'ok' : 'ng'}">${S.result.ok ? '正解！' : '不正解'}</div><p>${S.result.detail}</p><button data-action="closeOverlay">次へ</button></div>`;
     if (S.overlay.type === 'end') o.innerHTML = `<div class="modal"><div class="big ng">${S.overlay.text}</div><button onclick="location.reload()">リトライ</button></div>`;
