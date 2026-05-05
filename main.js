@@ -93,7 +93,14 @@ function normalJudge(selfCard, oppCard) {
   else ok = selfCard.value === oppCard.value;
 
   if (gameOver) { S.lose = true; S.overlay = { type: 'end', text: '赤カードに通常宣言しました。即敗北です。' }; return; }
-  if (ok) { oppCard.faceUp = true; oppCard.openedByMatch = true; oppCard.openFor=[true,true]; } else { S.miss += 1; markMissHint(oppCard);} 
+  if (ok) {
+    selfCard.faceUp = true;
+    selfCard.openedByMatch = true;
+    selfCard.openFor = [true, true];
+    oppCard.faceUp = true;
+    oppCard.openedByMatch = true;
+    oppCard.openFor = [true, true];
+  } else { S.miss += 1; markMissHint(oppCard);} 
   S.result = { ok, detail: `宣言: ${fmt(selfCard.value)} / 相手: ${fmt(oppCard.value)} / ミス: ${S.miss}` };
   S.overlay = { type: 'result' };
   checkWinLose();
