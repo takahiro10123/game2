@@ -147,9 +147,11 @@ function abilityJudge(selfCard, oppCards) {
     }
     S.result = { ok: false, detail: `能力失敗 / ミス: ${S.miss}` };
   } else if (hits.length === 1) {
+    selfCard.faceUp = true; selfCard.openedByMatch = true; selfCard.openFor=[true,true];
     hits[0].faceUp = true; hits[0].openedByMatch = true; hits[0].openFor=[true,true];
     S.result = { ok: true, detail: `能力成功: ${fmt(hits[0].value)} をオープン` };
   } else {
+    selfCard.faceUp = true; selfCard.openedByMatch = true; selfCard.openFor=[true,true];
     S.pendingAbilityHit = hits;
     S.pendingAbilityHitChooser = 1 - S.current;
     S.result = { ok: true, detail: '能力成功: 一致が2枚あります。公開する1枚を選択してください。' };
