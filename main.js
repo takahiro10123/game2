@@ -1,5 +1,6 @@
 const app = document.getElementById('app');
 
+// グローバル状態（ターン/公開情報/一時選択状態をまとめて管理）
 const S = {
   phase: 'start', // start | rules | setup | hint | ready | play
   yellowCount: 2,
@@ -60,10 +61,12 @@ function isOpenForPlayer(card, player){
   return !!card.openFor?.[player] || card.faceUp || card.openedByMatch;
 }
 
+// 公開済み判定: faceUp または openedByMatch なら全員公開扱い
 function isPublicOpen(card){
   return !!card.faceUp || !!card.openedByMatch;
 }
 
+// 一括オープン判定（既存条件 + 公開情報を使った追加条件）
 function canBulk(card) {
   if (kind(card.value) === 'red') return false;
   const [a, b] = selfIndexes(S.current);
@@ -157,6 +160,7 @@ function logOpenState(timing, card){
   });
 }
 
+// 特殊能力の判定: 0ヒット=失敗, 1ヒット=即公開, 2ヒット=相手が公開対象を選択
 function abilityJudge(selfCard, oppCards) {
   logOpenState('1. abilityJudge 実行直後 self', selfCard);
   oppCards.forEach((c, i) => logOpenState(`1. abilityJudge 実行直後 opp[${i}]`, c));
@@ -269,6 +273,7 @@ const actions = {
     render();
   },
   toPlay() { S.phase = 'play'; S.current = 0; S.overlay = { type: 'swap', nextPlayer: 0, message: `${S.playerNames[0]}さん、ゲーム開始です。行動を選択してください。` }; render(); },
+  // 結果オーバーレイを閉じた後の遷移制御（必要なら選択モーダルへ）
   closeOverlay() {
     S.overlay = null;
     if (S.phase === 'play' && S.result) {
@@ -309,6 +314,7 @@ const actions = {
   abilityHit1(){ if(S.pendingAbilitySelf){ S.pendingAbilitySelf.faceUp=true; S.pendingAbilitySelf.openedByMatch=true; S.pendingAbilitySelf.openFor=[true,true]; logOpenState('4. abilityHit1 選択直後 self', S.pendingAbilitySelf);} if(S.pendingAbilityHit?.[1]){ const c=S.pendingAbilityHit[1]; c.faceUp=true; c.openedByMatch=true; c.openFor=[true,true]; logOpenState('4. abilityHit1 選択直後 opp', c);}  S.pendingAbilityHit=null; S.pendingAbilityHitChooser=null; S.pendingAbilitySelf=null; S.result={ok:true,detail:'能力成功: 1枚を公開しました。'}; S.overlay={type:'result'}; checkWinLose(); render();},
 };
 
+// 画面描画（phase ごとに UI を切り替える）
 function view() {
   if (S.phase === 'start') {
     return `<div class="start-screen">
