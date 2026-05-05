@@ -252,7 +252,6 @@ function view() {
   const hintPlayer = S.hintPhase;
   const viewPlayer = S.phase==='hint' ? hintPlayer : S.current;
   const oppIdx = allOppIndexes(viewPlayer), myIdx = selfIndexes(viewPlayer);
-  const hintFromOpp = S.hints[1 - viewPlayer];
   const currentName = S.playerNames[S.current];
 
   const yList = S.deck.filter((v)=>kind(v)==='yellow').sort((a,b)=>a-b).map(fmt);
@@ -260,7 +259,6 @@ function view() {
   const actionGuide = S.action==='normal' ? '自分カード1枚→相手カード1枚を選択' : S.action==='bulk' ? '自分スタンドから一括オープン対象を1枚選択' : '自分カード1枚→相手カード2枚を選択';
 
   return `<div class="panel special-bar"><b>特殊カード</b><span class="chip yellow-chip">黄 ${yList.join(' / ') || '-'}</span><span class="chip red-chip">赤 ${rList.join(' / ') || '-'}</span></div>
-    <div class="panel">相手ヒント: ${hintFromOpp ? `スタンド${hintFromOpp.stand}の『${hintFromOpp.value}』` : '(未設定)'}</div>
     <div class="panel row">現在: ${currentName} / ターン: ${S.turn} / ミス:${'<span class="dot on"></span>'.repeat(S.miss)}${'<span class="dot"></span>'.repeat(2 - S.miss)} / 能力:${S.abilityUsed[S.current] ? '使用済' : '残1回'} / アクション:${S.action}</div>
     <div class="panel small">操作ガイド: ${actionGuide}</div>
     <div class="panel"><h3>"${S.playerNames[oppIdx[0] < 2 ? 0 : 1]}"さんのスタンド①</h3><div class="line">${S.stands[oppIdx[0]].map((c)=>renderCard(c,{opened:isPublicOpen(c),hidden:S.phase==='hint'?true:!isPublicOpen(c),hint:S.hints[1-viewPlayer]?.id===c.id,label:S.hints[1-viewPlayer]?.value,oppOpen:c.faceUp&&c.openedByMatch,selected:S.selectedOpp.some(x=>x.id===c.id)})).join('')}</div></div>
