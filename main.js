@@ -143,18 +143,23 @@ function isAbilityMatch(selfCard, oppCard) {
 }
 
 
-function logOpenState(tag, card){
+function logOpenState(timing, card){
   if (!card) return;
-  console.log(`[OPEN_STATE] ${tag}`, {
-    id: card.id,
-    value: card.value,
+  console.log('DEBUG', {
+    timing,
+    cardId: card.id,
+    owner: card.owner,
     faceUp: card.faceUp,
     openedByMatch: card.openedByMatch,
     openFor: card.openFor,
+    currentPlayer: S.current,
+    isPublicOpen: isPublicOpen(card),
   });
 }
 
 function abilityJudge(selfCard, oppCards) {
+  logOpenState('1. abilityJudge 実行直後 self', selfCard);
+  oppCards.forEach((c, i) => logOpenState(`1. abilityJudge 実行直後 opp[${i}]`, c));
   const hits = oppCards.filter((c) => isAbilityMatch(selfCard, c));
   if (hits.length === 0) {
     S.miss += 1;
@@ -168,16 +173,17 @@ function abilityJudge(selfCard, oppCards) {
   } else if (hits.length === 1) {
     selfCard.faceUp = true; selfCard.openedByMatch = true; selfCard.openFor=[true,true];
     hits[0].faceUp = true; hits[0].openedByMatch = true; hits[0].openFor=[true,true];
-    logOpenState('ability hit=1 self', selfCard);
-    logOpenState('ability hit=1 opp', hits[0]);
+    logOpenState('2. 1ヒット成功処理の直後 self', selfCard);
+    logOpenState('2. 1ヒット成功処理の直後 opp', hits[0]);
     S.result = { ok: true, detail: `能力成功: ${fmt(hits[0].value)} をオープン` };
   } else {
     selfCard.faceUp = true; selfCard.openedByMatch = true; selfCard.openFor=[true,true];
-    logOpenState('ability hit=2 self-before-choice', selfCard);
+    logOpenState('3. 2ヒット成功処理の直後 self', selfCard);
     S.pendingAbilityHit = hits;
     S.pendingAbilityHitChooser = 1 - S.current;
     S.pendingAbilitySelf = selfCard;
     S.result = { ok: true, detail: '能力成功: 一致が2枚あります。公開する1枚を選択してください。' };
+    hits.forEach((c, i) => logOpenState(`3. 2ヒット成功処理の直後 opp候補[${i}]`, c));
   }
   S.abilityUsed[S.current] = true;
   S.overlay = { type: 'result' };
@@ -189,6 +195,7 @@ function renderCard(c, { hidden, opened=false, hint = false, told = false, oppOp
   const hintLabel = label || c.revealedHint || '';
   const isOpened = opened || c.faceUp || c.openedByMatch;
   const effectiveHidden = hidden && !isOpened;
+  logOpenState('7. カード描画直前', c);
   return `<div class="card ${effectiveHidden ? 'back' : 'front ' + kind(c.value)} ${oppOpen ? 'open-opponent' : ''} ${selfOpen ? 'open-self' : ''} ${isOpened ? 'opened-visible' : ''} ${selectable ? 'selectable' : ''} ${selected ? 'selected-card' : ''} ${isOpened ? 'lifted' : ''}" data-id="${c.id}">${effectiveHidden ? '' : fmt(c.value)}${showHint ? `<span class="badge hint">HINT</span><span class="label">${hintLabel}</span>` : ''}${told ? '<span class="badge">伝</span>' : ''}</div>`;
 }
 
@@ -267,18 +274,24 @@ const actions = {
     if (S.phase === 'play' && S.result) {
       S.result = null;
       if (S.pendingAbilityHit) {
+        S.stands.flat().filter((c)=>isPublicOpen(c)).forEach((c)=>logOpenState('5. ターン交代直前(pending hit)', c));
         nextTurn();
+        S.stands.flat().filter((c)=>isPublicOpen(c)).forEach((c)=>logOpenState('6. ターン交代直後(pending hit)', c));
         S.overlay = { type: 'abilityHitChoice' };
         render();
         return;
       }
       if (S.pendingAbilityMiss) {
+        S.stands.flat().filter((c)=>isPublicOpen(c)).forEach((c)=>logOpenState('5. ターン交代直前(pending miss)', c));
         nextTurn();
+        S.stands.flat().filter((c)=>isPublicOpen(c)).forEach((c)=>logOpenState('6. ターン交代直後(pending miss)', c));
         S.overlay = { type: 'abilityMissChoice' };
         render();
         return;
       }
+      S.stands.flat().filter((c)=>isPublicOpen(c)).forEach((c)=>logOpenState('5. ターン交代直前(normal next)', c));
       nextTurn();
+      S.stands.flat().filter((c)=>isPublicOpen(c)).forEach((c)=>logOpenState('6. ターン交代直後(normal next)', c));
       render();
       return;
     }
@@ -292,8 +305,8 @@ const actions = {
   setRed(v) { S.redCount = v; render(); },
   abilityMiss0(){ if(S.pendingAbilityMiss?.[0]) markMissHint(S.pendingAbilityMiss[0]); S.pendingAbilityMiss=null; S.pendingAbilityChooser=null; S.abilityUsed[S.current]=true; S.result={ok:false,detail:`能力失敗 / ミス: ${S.miss}`}; S.overlay={type:'result'}; checkWinLose(); render();},
   abilityMiss1(){ if(S.pendingAbilityMiss?.[1]) markMissHint(S.pendingAbilityMiss[1]); S.pendingAbilityMiss=null; S.pendingAbilityChooser=null; S.abilityUsed[S.current]=true; S.result={ok:false,detail:`能力失敗 / ミス: ${S.miss}`}; S.overlay={type:'result'}; checkWinLose(); render();},
-  abilityHit0(){ if(S.pendingAbilitySelf){ S.pendingAbilitySelf.faceUp=true; S.pendingAbilitySelf.openedByMatch=true; S.pendingAbilitySelf.openFor=[true,true]; logOpenState('ability choice0 self', S.pendingAbilitySelf);} if(S.pendingAbilityHit?.[0]){ const c=S.pendingAbilityHit[0]; c.faceUp=true; c.openedByMatch=true; c.openFor=[true,true]; logOpenState('ability choice0 opp', c);}  S.pendingAbilityHit=null; S.pendingAbilityHitChooser=null; S.pendingAbilitySelf=null; S.result={ok:true,detail:'能力成功: 1枚を公開しました。'}; S.overlay={type:'result'}; checkWinLose(); render();},
-  abilityHit1(){ if(S.pendingAbilitySelf){ S.pendingAbilitySelf.faceUp=true; S.pendingAbilitySelf.openedByMatch=true; S.pendingAbilitySelf.openFor=[true,true]; logOpenState('ability choice1 self', S.pendingAbilitySelf);} if(S.pendingAbilityHit?.[1]){ const c=S.pendingAbilityHit[1]; c.faceUp=true; c.openedByMatch=true; c.openFor=[true,true]; logOpenState('ability choice1 opp', c);}  S.pendingAbilityHit=null; S.pendingAbilityHitChooser=null; S.pendingAbilitySelf=null; S.result={ok:true,detail:'能力成功: 1枚を公開しました。'}; S.overlay={type:'result'}; checkWinLose(); render();},
+  abilityHit0(){ if(S.pendingAbilitySelf){ S.pendingAbilitySelf.faceUp=true; S.pendingAbilitySelf.openedByMatch=true; S.pendingAbilitySelf.openFor=[true,true]; logOpenState('4. abilityHit0 選択直後 self', S.pendingAbilitySelf);} if(S.pendingAbilityHit?.[0]){ const c=S.pendingAbilityHit[0]; c.faceUp=true; c.openedByMatch=true; c.openFor=[true,true]; logOpenState('4. abilityHit0 選択直後 opp', c);}  S.pendingAbilityHit=null; S.pendingAbilityHitChooser=null; S.pendingAbilitySelf=null; S.result={ok:true,detail:'能力成功: 1枚を公開しました。'}; S.overlay={type:'result'}; checkWinLose(); render();},
+  abilityHit1(){ if(S.pendingAbilitySelf){ S.pendingAbilitySelf.faceUp=true; S.pendingAbilitySelf.openedByMatch=true; S.pendingAbilitySelf.openFor=[true,true]; logOpenState('4. abilityHit1 選択直後 self', S.pendingAbilitySelf);} if(S.pendingAbilityHit?.[1]){ const c=S.pendingAbilityHit[1]; c.faceUp=true; c.openedByMatch=true; c.openFor=[true,true]; logOpenState('4. abilityHit1 選択直後 opp', c);}  S.pendingAbilityHit=null; S.pendingAbilityHitChooser=null; S.pendingAbilitySelf=null; S.result={ok:true,detail:'能力成功: 1枚を公開しました。'}; S.overlay={type:'result'}; checkWinLose(); render();},
 };
 
 function view() {
