@@ -279,9 +279,8 @@ const actions = {
     if (S.phase === 'play' && S.result) {
       S.result = null;
       if (S.pendingAbilityHit) {
-        S.stands.flat().filter((c)=>isPublicOpen(c)).forEach((c)=>logOpenState('5. ターン交代直前(pending hit)', c));
-        nextTurn();
-        S.stands.flat().filter((c)=>isPublicOpen(c)).forEach((c)=>logOpenState('6. ターン交代直後(pending hit)', c));
+        // 2ヒット時はここでターンを進めず、先に公開対象選択モーダルを表示する
+        S.stands.flat().filter((c)=>isPublicOpen(c)).forEach((c)=>logOpenState('5. abilityHitChoice表示前(pending hit)', c));
         S.overlay = { type: 'abilityHitChoice' };
         render();
         return;
