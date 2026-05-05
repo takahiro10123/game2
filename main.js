@@ -67,11 +67,23 @@ function canBulk(card) {
   const self = [...S.stands[a], ...S.stands[b]].filter((c) => !c.faceUp);
   const val = kind(card.value) === 'yellow' ? 'yellow' : card.value;
   const same = self.filter((c) => (val === 'yellow' ? kind(c.value) === 'yellow' : c.value === val));
+
+  // 既存仕様: 自分の未オープンに同値4枚(黄4枚含む)がある
   if (same.length >= 4) return true;
+
+  // 既存仕様: 未オープンが全て自分側にある特殊ケース
   if (hiddenTotal() === self.length && self.length > 0) {
     if (val === 'yellow') return self.length === 2 && same.length === 2;
     return same.length === self.length;
   }
+
+  // 追加仕様: 同値2枚が既に公開済みで、残り未公開が全て自分スタンド内
+  const allSame = S.stands.flat().filter((c) => (val === 'yellow' ? kind(c.value) === 'yellow' : c.value === val));
+  const openedSame = allSame.filter((c) => isPublicOpen(c));
+  const hiddenSame = allSame.filter((c) => !isPublicOpen(c));
+  const hiddenSameInSelf = hiddenSame.length > 0 && hiddenSame.every((c) => self.some((x) => x.id === c.id));
+  if (openedSame.length >= 2 && hiddenSameInSelf) return true;
+
   return false;
 }
 
