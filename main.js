@@ -64,7 +64,8 @@ function isPublicOpen(card){
 function canBulk(card) {
   if (kind(card.value) === 'red') return false;
   const [a, b] = selfIndexes(S.current);
-  const self = [...S.stands[a], ...S.stands[b]].filter((c) => !c.faceUp);
+  const selfAll = [...S.stands[a], ...S.stands[b]];
+  const self = selfAll.filter((c) => !isPublicOpen(c));
   const val = kind(card.value) === 'yellow' ? 'yellow' : card.value;
   const same = self.filter((c) => (val === 'yellow' ? kind(c.value) === 'yellow' : c.value === val));
 
@@ -81,8 +82,19 @@ function canBulk(card) {
   const allSame = S.stands.flat().filter((c) => (val === 'yellow' ? kind(c.value) === 'yellow' : c.value === val));
   const openedSame = allSame.filter((c) => isPublicOpen(c));
   const hiddenSame = allSame.filter((c) => !isPublicOpen(c));
-  const hiddenSameInSelf = hiddenSame.length > 0 && hiddenSame.every((c) => self.some((x) => x.id === c.id));
+  const selfIds = new Set(self.map((c) => c.id));
+  const selfAllIds = new Set(selfAll.map((c) => c.id));
+  const hiddenSameInSelf = hiddenSame.length > 0 && hiddenSame.every((c) => selfIds.has(c.id));
   if (openedSame.length >= 2 && hiddenSameInSelf) return true;
+
+  // 追加仕様(黄色2枚): 他の未公開配置に関係なく、2枚とも自分スタンド内なら一括可
+  if (val === 'yellow') {
+    const allYellow = S.stands.flat().filter((c) => kind(c.value) === 'yellow');
+    if (allYellow.length === 2) {
+      const allYellowInSelf = allYellow.every((c) => selfAllIds.has(c.id));
+      if (allYellowInSelf) return true;
+    }
+  }
 
   return false;
 }
