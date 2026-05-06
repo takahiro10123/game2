@@ -110,3 +110,7 @@ input{background:#fff;color:#25375b;border:1px solid #b8c9ef;border-radius:10px;
   .big{font-size:28px}
   button{padding:8px 11px;border-radius:10px}
 }
+
+.number-progress{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.number-chip{min-width:28px;height:28px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;color:#526083;background:#eef3ff;border:1px solid #d8e4ff}
+.number-chip.complete{color:#fff;background:linear-gradient(180deg,#20c77f,#11a96a);border-color:#11a96a;box-shadow:0 0 0 4px #17b97822}
