@@ -89,16 +89,16 @@ function canBulk(card) {
   const openedSame = allSame.filter((c) => isPublicOpen(c));
   const hiddenSame = allSame.filter((c) => !isPublicOpen(c));
   const selfIds = new Set(self.map((c) => c.id));
-  const selfAllIds = new Set(selfAll.map((c) => c.id));
   const hiddenSameInSelf = hiddenSame.length > 0 && hiddenSame.every((c) => selfIds.has(c.id));
   if (openedSame.length >= 2 && hiddenSameInSelf) return true;
 
-  // 追加仕様(黄色2枚): 他の未公開配置に関係なく、2枚とも自分スタンド内なら一括可
+  // 追加仕様(黄色2枚): 未公開の黄色2枚がどちらも自分スタンド内なら一括可
   if (val === 'yellow') {
     const allYellow = S.stands.flat().filter((c) => kind(c.value) === 'yellow');
-    if (allYellow.length === 2) {
-      const allYellowInSelf = allYellow.every((c) => selfAllIds.has(c.id));
-      if (allYellowInSelf) return true;
+    const hiddenYellow = allYellow.filter((c) => !isPublicOpen(c));
+    if (allYellow.length === 2 && hiddenYellow.length === 2) {
+      const hiddenYellowInSelf = hiddenYellow.every((c) => selfIds.has(c.id));
+      if (hiddenYellowInSelf) return true;
     }
   }
 
@@ -196,7 +196,7 @@ function abilityJudge(selfCard, oppCards) {
 
 function renderCard(c, { hidden, opened=false, hint = false, told = false, oppOpen = false, selfOpen = false, selectable = false, selected=false, label = '' } = {}) {
   const showHint = hint || !!c.revealedHint;
-  const hintLabel = label || c.revealedHint || '';
+  const hintLabel = c.revealedHint || label || '';
   const isOpened = opened || c.faceUp || c.openedByMatch;
   const effectiveHidden = hidden && !isOpened;
   logOpenState('7. カード描画直前', c);
